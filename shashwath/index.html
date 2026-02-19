@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thinking of You</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../app.css" />
+</head>
+<body>
+
+  <!-- Access denied screen -->
+  <div class="access-denied hidden" id="accessDenied">
+    <p>This link isn't meant for you 🌙</p>
+  </div>
+
+  <!-- Main app (hidden until auth passes) -->
+  <div class="app hidden" id="app">
+
+    <!-- SVG grain filter -->
+    <svg class="grain-filter" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="grain" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="4" stitchTiles="stitch" result="noise"/>
+          <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
+          <feComposite in="SourceGraphic" in2="grayNoise" operator="arithmetic" k1="0" k2="1" k3="0.18" k4="0"/>
+        </filter>
+      </defs>
+    </svg>
+
+    <!-- ── SCREEN 1: What Krithi feels for Shashwath ── -->
+    <section class="screen screen-1" id="screen1">
+      <div class="bubble-field" id="theirBubbleField">
+        <!-- Krithi's bubbles rendered here by JS -->
+      </div>
+
+      <div class="caption-block">
+        <p class="caption-text">Krithi is thinking<br>of you this much</p>
+        <div class="dot-row"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        <button class="pill-btn" id="openPanelBtn">
+          <svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M5.5 9S1 6.12 1 3.25a2.75 2.75 0 0 1 4.5-2.1A2.75 2.75 0 0 1 10 3.25C10 6.12 5.5 9 5.5 9Z" fill="#888"/></svg>
+          Thinking of you right now
+        </button>
+      </div>
+    </section>
+
+    <!-- ── SCREEN 2: Side panel — Shashwath's record ── -->
+    <div class="side-panel-overlay hidden" id="sidePanelOverlay">
+      <section class="screen screen-2">
+
+        <!-- Left: Krithi's bubbles (same view) -->
+        <div class="panel panel-left">
+          <div class="bubble-field bubble-field--left" id="theirBubbleFieldLeft">
+          </div>
+          <div class="panel-left-caption">
+            <p class="caption-text">Krithi is thinking of<br>you this much</p>
+          </div>
+        </div>
+
+        <!-- Right: Shashwath's own record -->
+        <div class="panel panel-right">
+          <button class="close-btn" id="closePanelBtn">×</button>
+
+          <div class="panel-right-header">
+            <p class="panel-right-label">You are thinking of<br>Krithi this much:</p>
+            <button class="icon-btn" id="addThoughtBtn" title="Record a thought">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <line x1="6.5" y1="1" x2="6.5" y2="12" stroke="#444" stroke-width="1.6" stroke-linecap="round"/>
+                <line x1="1" y1="6.5" x2="12" y2="6.5" stroke="#444" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="bubble-field bubble-field--right" id="myBubbleField">
+            <!-- Shashwath's bubbles rendered here -->
+          </div>
+
+          <div class="panel-right-footer">
+            <button class="pill-btn pill-btn--panel" id="recordBtn">
+              <svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M5.5 9S1 6.12 1 3.25a2.75 2.75 0 0 1 4.5-2.1A2.75 2.75 0 0 1 10 3.25C10 6.12 5.5 9 5.5 9Z" fill="#888"/></svg>
+              Thinking of you right now
+            </button>
+          </div>
+        </div>
+
+      </section>
+    </div>
+
+  </div><!-- /app -->
+
+  <script type="module">
+    import { db } from '../firebase-config.js';
+    import {
+      collection, addDoc, onSnapshot,
+      query, orderBy, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // ── Auth guard ──────────────────────────────────────────────
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('key') !== 'kriath') {
+      document.getElementById('accessDenied').classList.remove('hidden');
+    } else {
+      document.getElementById('app').classList.remove('hidden');
+      initApp();
+    }
+
+    function initApp() {
+      const ME = 'shashwath';
+      const THEM = 'krithi';
+
+      const myCol    = collection(db, 'thoughts', ME,   'taps');
+      const theirCol = collection(db, 'thoughts', THEM, 'taps');
+
+      function bubbleStyleFromTimestamp(ts) {
+        const date = ts?.toDate ? ts.toDate() : new Date();
+        const h = date.getHours();
+        if (h >= 6 && h < 12) {
+          return { gradient: 'radial-gradient(circle at 35% 32%, #f9e07a, #e8a020 80%)', label: 'morning' };
+        } else if (h >= 12 && h < 18) {
+          return { gradient: 'radial-gradient(circle at 35% 32%, #f0a060, #d96020 80%)', label: 'afternoon' };
+        } else if (h >= 18 && h < 21) {
+          return { gradient: 'radial-gradient(circle at 35% 32%, #e07040, #c03010 80%)', label: 'evening' };
+        } else {
+          return { gradient: 'radial-gradient(circle at 35% 32%, #6aaade, #1a3fa0 80%)', label: 'night' };
+        }
+      }
+
+      const SIZES = [80, 96, 110, 126, 140, 90, 104, 118];
+      function sizeForIndex(i) { return SIZES[i % SIZES.length]; }
+
+      function layoutBubbles(bubbles, containerW, containerH) {
+        if (bubbles.length === 0) return [];
+        const placed = [];
+        const cx = containerW / 2;
+        const cy = containerH / 2 - 40;
+        bubbles.forEach((b, i) => {
+          const r = b.size / 2;
+          if (i === 0) { placed.push({ x: cx - r, y: cy - r, ...b }); return; }
+          const angle = i * 2.4;
+          const spread = Math.sqrt(i) * (b.size * 0.72);
+          placed.push({ x: cx + Math.cos(angle) * spread - r, y: cy + Math.sin(angle) * spread - r, ...b });
+        });
+        return placed;
+      }
+
+      function renderBubbles(bubbleData, containerId, containerW, containerH) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        el.innerHTML = '';
+        const laid = layoutBubbles(bubbleData, containerW, containerH);
+        laid.forEach((b) => {
+          const div = document.createElement('div');
+          div.className = 'bubble';
+          div.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.size}px;height:${b.size}px;background:${b.gradient};`;
+          const date = b.ts?.toDate ? b.ts.toDate() : new Date();
+          div.title = date.toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' });
+          el.appendChild(div);
+        });
+      }
+
+      let theirBubbles = [];
+      let myBubbles = [];
+
+      onSnapshot(query(theirCol, orderBy('ts', 'asc')), (snap) => {
+        theirBubbles = snap.docs.map((d, i) => ({
+          id: d.id, ts: d.data().ts, size: sizeForIndex(i),
+          ...bubbleStyleFromTimestamp(d.data().ts)
+        }));
+        renderBubbles(theirBubbles, 'theirBubbleField',     900, 700);
+        renderBubbles(theirBubbles, 'theirBubbleFieldLeft', 600, 700);
+      });
+
+      onSnapshot(query(myCol, orderBy('ts', 'asc')), (snap) => {
+        myBubbles = snap.docs.map((d, i) => ({
+          id: d.id, ts: d.data().ts, size: sizeForIndex(i),
+          ...bubbleStyleFromTimestamp(d.data().ts)
+        }));
+        renderBubbles(myBubbles, 'myBubbleField', 560, 620);
+      });
+
+      async function recordThought() {
+        const btn = document.getElementById('recordBtn');
+        btn.disabled = true;
+        btn.textContent = '♥ Sending...';
+        try {
+          await addDoc(myCol, { ts: serverTimestamp() });
+        } catch(e) { console.error(e); }
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = `<svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M5.5 9S1 6.12 1 3.25a2.75 2.75 0 0 1 4.5-2.1A2.75 2.75 0 0 1 10 3.25C10 6.12 5.5 9 5.5 9Z" fill="#888"/></svg> Thinking of you right now`;
+        }, 1500);
+      }
+
+      document.getElementById('openPanelBtn').addEventListener('click', () => {
+        document.getElementById('sidePanelOverlay').classList.remove('hidden');
+      });
+      document.getElementById('closePanelBtn').addEventListener('click', () => {
+        document.getElementById('sidePanelOverlay').classList.add('hidden');
+      });
+      document.getElementById('recordBtn').addEventListener('click', recordThought);
+      document.getElementById('addThoughtBtn').addEventListener('click', recordThought);
+      document.getElementById('sidePanelOverlay').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('sidePanelOverlay')) {
+          document.getElementById('sidePanelOverlay').classList.add('hidden');
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>
