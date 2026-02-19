@@ -176,10 +176,13 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
   line-height: 1.4;
   color: #111;
   text-align: center;
+  /* Auto-invert to white when bubbles overlap the text */
+  mix-blend-mode: difference;
+  filter: invert(0);
 }
 
 .dot-row { display: flex; gap: 10px; }
-.dot { width: 3px; height: 3px; border-radius: 50%; background: #aaa; }
+.dot { width: 3px; height: 3px; border-radius: 50%; background: #aaa; mix-blend-mode: difference; }
 
 /* ============================================================
    Pill button
@@ -265,25 +268,7 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
   cursor: col-resize;
   position: relative;
   z-index: 10;
-  transition: background 0.2s, flex-basis 0.2s, width 0.2s;
-}
-.panel-divider:hover,
-.panel-divider.dragging {
-  flex-basis: 6px;
-  width: 6px;
-  background: rgba(0,0,0,0.08);
-}
-/* Vertical pill handle */
-.panel-divider::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 2px;
-  height: 32px;
-  border-radius: 1px;
-  background: rgba(0,0,0,0.15);
+  /* No size change on hover — just the cursor changes */
 }
 
 .panel-left-caption {
