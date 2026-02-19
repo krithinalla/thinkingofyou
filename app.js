@@ -94,11 +94,12 @@ function sizeForIndex(i) { return SIZES[i % SIZES.length]; }
 // For each bubble, scan outward in concentric rings, sampling
 // many angles per ring until a gap-free position is found.
 // This guarantees no overlaps regardless of bubble count/size.
-function layoutBubbles(bubbles, containerW, containerH) {
+function layoutBubbles(bubbles, containerW, containerH, cyOffset = 0) {
   if (!bubbles.length) return [];
 
   const cx = containerW / 2;
-  const cy = containerH / 2 - 10;
+  // Shift cluster center up to sit in the visual space above the caption
+  const cy = containerH / 2 + cyOffset;
   const placed = []; // { cx, cy, r }
 
   return bubbles.map((b) => {
@@ -157,7 +158,12 @@ function renderBubbles(bubbleData, containerId) {
   const containerW = rect.width  || el.offsetWidth  || 900;
   const containerH = rect.height || el.offsetHeight || 680;
 
-  const laid = layoutBubbles(bubbleData, containerW, containerH);
+  // For the main screen-1 field, shift cluster center up so it sits
+  // in the visual area above the caption block (~160px tall at bottom).
+  // Other containers (panel left/right) use centered layout.
+  const isMainField = containerId === 'theirBubbleField';
+  const cyOffset = isMainField ? -80 : 0;
+  const laid = layoutBubbles(bubbleData, containerW, containerH, cyOffset);
 
   if (!renderedIds[containerId]) renderedIds[containerId] = new Set();
   const known = renderedIds[containerId];
