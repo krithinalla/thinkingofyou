@@ -143,6 +143,46 @@ function renderBubbles(bubbleData, containerId, containerW, containerH) {
   });
 }
 
+// ── Draggable panel resizer ───────────────────────────────────
+function initResizer() {
+  const divider  = document.getElementById('panelDivider');
+  const screen2  = document.querySelector('.screen-2');
+  if (!divider || !screen2) return;
+
+  const panelLeft = screen2.querySelector('.panel-left');
+  if (!panelLeft) return;
+
+  let dragging   = false;
+  let startX     = 0;
+  let startWidth = 0;
+
+  divider.addEventListener('mousedown', (e) => {
+    dragging  = true;
+    startX    = e.clientX;
+    startWidth = screen2.getBoundingClientRect().width;
+    divider.classList.add('dragging');
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const containerRect = screen2.getBoundingClientRect();
+    const mouseOffset   = e.clientX - containerRect.left;
+    let pct = (mouseOffset / containerRect.width) * 100;
+    pct = Math.min(75, Math.max(25, pct));
+    panelLeft.style.setProperty('--left-w', pct + '%');
+  });
+
+  function stopDrag() {
+    if (!dragging) return;
+    dragging = false;
+    divider.classList.remove('dragging');
+  }
+
+  document.addEventListener('mouseup',    stopDrag);
+  document.addEventListener('mouseleave', stopDrag);
+}
+
 // ── Main init — called by each page with its identity ────────
 export function initApp({ me, them, myKey }) {
   // Auth guard
@@ -214,4 +254,6 @@ export function initApp({ me, them, myKey }) {
       setTimeout(() => overlay.classList.add('hidden'), 500);
     }
   });
+
+  initResizer();
 }

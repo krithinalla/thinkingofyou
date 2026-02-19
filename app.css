@@ -232,11 +232,39 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 }
 
 .panel-left {
-  flex: 0 0 52%;
+  width: var(--left-w, 52%);
+  flex: 0 0 var(--left-w, 52%);
   background: #f4f4f4;
 }
 
 .bubble-field--left { /* same as .bubble-field */ }
+
+/* ── Panel divider (draggable resizer) ───────────────────── */
+.panel-divider {
+  flex: 0 0 6px;
+  width: 6px;
+  background: transparent;
+  cursor: col-resize;
+  position: relative;
+  z-index: 10;
+  transition: background 0.2s;
+}
+.panel-divider:hover,
+.panel-divider.dragging {
+  background: rgba(0,0,0,0.08);
+}
+/* Double-headed arrow cursor */
+.panel-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 32px;
+  border-radius: 1px;
+  background: rgba(0,0,0,0.15);
+}
 
 .panel-left-caption {
   position: absolute;
@@ -247,7 +275,7 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 /* ── Right panel ─────────────────────────────────────────── */
 .panel-right {
-  flex: 0 0 48%;
+  flex: 1;
   background-color: #efefef;
   border-left: 1px solid #c0c0c0;
   /* Grid paper */
