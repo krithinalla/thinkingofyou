@@ -289,28 +289,29 @@ export function initApp({ me, them, myKey }) {
   }
 
   // ── UI wiring ─────────────────────────────────────────────
-  document.getElementById('openPanelBtn').addEventListener('click', () => {
+  function openPanel() {
     const overlay = document.getElementById('sidePanelOverlay');
-    // Set gradient BEFORE removing hidden, so it's already painted when it fades in
-    overlay.style.background = skyGradientNow();
+    // Ensure it's in the flow (remove hidden) then on next frame fade in
     overlay.classList.remove('hidden');
-    // Small rAF delay ensures the browser paints the gradient before transitioning opacity
+    overlay.style.background = skyGradientNow();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => overlay.classList.add('visible'));
     });
-  });
-  document.getElementById('closePanelBtn').addEventListener('click', () => {
+  }
+
+  function closePanel() {
     const overlay = document.getElementById('sidePanelOverlay');
+    // Fade out — visibility+opacity both transition (defined in CSS)
     overlay.classList.remove('visible');
-    setTimeout(() => overlay.classList.add('hidden'), 500);
-  });
+    // After transition completes, fully remove from layout
+    setTimeout(() => overlay.classList.add('hidden'), 460);
+  }
+
+  document.getElementById('openPanelBtn').addEventListener('click', openPanel);
+  document.getElementById('closePanelBtn').addEventListener('click', closePanel);
   document.getElementById('recordBtn').addEventListener('click', recordThought);
   document.getElementById('sidePanelOverlay').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('sidePanelOverlay')) {
-      const overlay = document.getElementById('sidePanelOverlay');
-      overlay.classList.remove('visible');
-      setTimeout(() => overlay.classList.add('hidden'), 500);
-    }
+    if (e.target === document.getElementById('sidePanelOverlay')) closePanel();
   });
 
   initResizer();
