@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thinking of You</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- SVG grain filter (hidden, referenced by bubbles) -->
+  <svg class="grain-filter" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="grain" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="4" stitchTiles="stitch" result="noise"/>
+        <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
+        <feBlend in="SourceGraphic" in2="grayNoise" mode="multiply" result="blended"/>
+        <feComposite in="blended" in2="SourceGraphic" operator="in"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Screen 1: Sender view -->
+  <section class="screen screen-1" id="screen1">
+    <div class="bubble-cluster cluster-large">
+      <div class="bubble b-yellow-lg"  style="--x:344px;--y:239px;--w:166px;--h:169px"></div>
+      <div class="bubble b-yellow-sm"  style="--x:514px;--y:218px;--w:94px; --h:96px"></div>
+      <div class="bubble b-blue-sm"    style="--x:551px;--y:102px;--w:114px;--h:116px"></div>
+      <div class="bubble b-orange-sm"  style="--x:531px;--y:483px;--w:114px;--h:116px"></div>
+      <div class="bubble b-orange-xs"  style="--x:676px;--y:448px;--w:91px; --h:93px"></div>
+      <div class="bubble b-blue-lg"    style="--x:542px;--y:314px;--w:166px;--h:169px"></div>
+      <div class="bubble b-orange-md"  style="--x:427px;--y:419px;--w:115px;--h:117px"></div>
+      <div class="bubble b-blue-md"    style="--x:663px;--y:172px;--w:166px;--h:169px"></div>
+      <div class="bubble b-blue-xs"    style="--x:740px;--y:353px;--w:122px;--h:124px"></div>
+    </div>
+
+    <div class="caption-block">
+      <p class="caption-text">Shashwath is thinking<br>of you this much</p>
+      <div class="dots">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+      <button class="pill-btn" id="openBtn">
+        <span class="heart-icon">♥</span>
+        Thinking of you right now
+      </button>
+    </div>
+  </section>
+
+  <!-- Screen 2: Recipient view (modal overlay) -->
+  <div class="modal-overlay hidden" id="modal">
+    <section class="screen screen-2">
+
+      <!-- Left panel: light gray + full bubble cluster -->
+      <div class="panel panel-left">
+        <div class="bubble-cluster cluster-large cluster-left">
+          <div class="bubble b-yellow-lg"  style="--x:74px; --y:243px;--w:166px;--h:169px"></div>
+          <div class="bubble b-yellow-sm"  style="--x:244px;--y:222px;--w:94px; --h:96px"></div>
+          <div class="bubble b-blue-sm"    style="--x:281px;--y:106px;--w:114px;--h:116px"></div>
+          <div class="bubble b-orange-sm"  style="--x:261px;--y:487px;--w:114px;--h:116px"></div>
+          <div class="bubble b-orange-xs"  style="--x:406px;--y:452px;--w:91px; --h:93px"></div>
+          <div class="bubble b-blue-lg"    style="--x:272px;--y:318px;--w:166px;--h:169px"></div>
+          <div class="bubble b-orange-md"  style="--x:157px;--y:423px;--w:115px;--h:117px"></div>
+          <div class="bubble b-blue-md"    style="--x:393px;--y:176px;--w:166px;--h:169px"></div>
+          <div class="bubble b-blue-xs"    style="--x:470px;--y:357px;--w:122px;--h:124px"></div>
+        </div>
+        <div class="panel-left-caption">
+          <p class="caption-text">Shashwath is thinking of<br>you this much</p>
+        </div>
+      </div>
+
+      <!-- Right panel: grid paper + 3 small bubbles -->
+      <div class="panel panel-right">
+        <button class="close-btn" id="closeBtn">×</button>
+
+        <div class="panel-right-header">
+          <p class="panel-right-label">You are thinking of shashwath this much:</p>
+          <button class="icon-btn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="6.5" stroke="#333" />
+              <line x1="4" y1="7" x2="10" y2="7" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="7" y1="4" x2="7" y2="10" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="bubble-cluster cluster-small">
+          <div class="bubble b-yellow-sm"  style="--x:193px;--y:130px;--w:94px; --h:96px"></div>
+          <div class="bubble b-orange-xs"  style="--x:220px;--y:256px;--w:91px; --h:93px"></div>
+          <div class="bubble b-blue-xs"    style="--x:309px;--y:178px;--w:122px;--h:124px"></div>
+        </div>
+
+        <div class="panel-right-footer">
+          <button class="pill-btn pill-btn--dark">
+            <span class="heart-icon">♥</span>
+            Thinking of you right now
+          </button>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
