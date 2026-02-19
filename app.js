@@ -302,32 +302,25 @@ function initResizer() {
   document.addEventListener('mouseleave', stopDrag);
 }
 
-// ── Caption contrast — flip text white/dark based on bubble color ──
-// Called once on load and again whenever the bubble snapshot updates.
+// ── Caption contrast — screen 1 always has a white background,
+// so caption text, dots, and button are always dark.
 function updateCaptionContrast() {
-  const isDark = bubbleIsDarkNow();
-  // All caption-text elements on screen 1 (not inside the overlay)
   const screen1 = document.getElementById('screen1');
   if (!screen1) return;
   screen1.querySelectorAll('.caption-text').forEach(el => {
-    el.style.color = isDark ? '#ffffff' : '#111111';
-    el.style.textShadow = isDark
-      ? '0 1px 6px rgba(0,0,0,0.35)'
-      : 'none';
+    el.style.color = '#111111';
+    el.style.textShadow = 'none';
   });
-  // Also flip the dots
   screen1.querySelectorAll('.dot').forEach(el => {
-    el.style.background = isDark ? 'rgba(255,255,255,0.5)' : '#aaa';
+    el.style.background = '#aaa';
   });
-  // And the pill button border/text (subtle tint)
   const btn = screen1.querySelector('.pill-btn');
   if (btn) {
-    btn.style.color      = isDark ? '#ffffff' : '#111111';
-    btn.style.background = isDark ? 'rgba(255,255,255,0.18)' : '#ebebeb';
-    btn.style.borderColor= isDark ? 'rgba(255,255,255,0.35)' : '#bbb';
-    // SVG lines inside the button
+    btn.style.color       = '#111111';
+    btn.style.background  = '#ebebeb';
+    btn.style.borderColor = '#bbb';
     btn.querySelectorAll('line').forEach(l => {
-      l.setAttribute('stroke', isDark ? '#fff' : '#888');
+      l.setAttribute('stroke', '#888');
     });
   }
 }
