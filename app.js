@@ -232,7 +232,8 @@ function renderBubbles(bubbleData, containerId) {
       `;
 
       const date    = b.ts?.toDate ? b.ts.toDate() : new Date();
-      const timeStr = date.toLocaleTimeString('en-US', {
+      const timeStr = date.toLocaleString('en-US', {
+        month: 'short', day: 'numeric',
         hour: 'numeric', minute: '2-digit', hour12: true,
       });
       attachTimeLabel(inner, timeStr);
