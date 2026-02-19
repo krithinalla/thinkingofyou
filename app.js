@@ -86,9 +86,14 @@ function attachTimeLabel(bubbleEl, timeStr) {
   });
 }
 
-// ── Bubble sizing — varied for organic feel ───────────────────
-const SIZES = [92, 112, 76, 130, 88, 106, 118, 80, 100, 96, 122, 84];
-function sizeForIndex(i) { return SIZES[i % SIZES.length]; }
+// ── Bubble sizing — scales with container ─────────────────────
+// Base sizes are defined at the 832px design height.
+// sizeForIndex multiplies by a scale factor derived from the actual
+// container so bubbles grow/shrink with the viewport.
+const BASE_SIZES = [92, 112, 76, 130, 88, 106, 118, 80, 100, 96, 122, 84];
+function sizeForIndex(i, scale = 1) {
+  return Math.round(BASE_SIZES[i % BASE_SIZES.length] * scale);
+}
 
 // ── Non-overlapping circle packing ───────────────────────────
 // For each bubble, scan outward in concentric rings, sampling
@@ -147,23 +152,38 @@ function layoutBubbles(bubbles, containerW, containerH, cyOffset = 0) {
 // animation) and moves existing ones smoothly if layout shifts.
 // Structure: .bubble-anchor (positioned) > .bubble (visual + float anim)
 // Separating position from animation avoids transform conflicts.
-const renderedIds = {}; // { containerId → Set<id> }
+const renderedIds  = {}; // { containerId → Set<id> }
+const lastData     = {}; // { containerId → bubbleData[] } for re-layout on resize
 
 function renderBubbles(bubbleData, containerId) {
   const el = document.getElementById(containerId);
   if (!el) return;
+
+  // Cache the latest data so ResizeObserver can re-render without Firestore
+  lastData[containerId] = bubbleData;
 
   // Always measure the live element so the cluster is truly centered
   const rect = el.getBoundingClientRect();
   const containerW = rect.width  || el.offsetWidth  || 900;
   const containerH = rect.height || el.offsetHeight || 680;
 
+  // Scale bubble sizes relative to the design reference height (832px).
+  // Use the smaller dimension to keep bubbles fitting in both axes.
+  const scale = Math.min(containerW, containerH) / 832;
+
   // For the main screen-1 field, shift cluster center up so it sits
   // in the visual area above the caption block (~160px tall at bottom).
   // Other containers (panel left/right) use centered layout.
   const isMainField = containerId === 'theirBubbleField';
-  const cyOffset = isMainField ? -80 : 0;
-  const laid = layoutBubbles(bubbleData, containerW, containerH, cyOffset);
+  const cyOffset    = isMainField ? Math.round(-0.10 * containerH) : 0;
+
+  // Re-build the bubble list with scaled sizes before layout
+  const scaledData = bubbleData.map((b, i) => ({
+    ...b,
+    size: sizeForIndex(i, scale),
+  }));
+
+  const laid = layoutBubbles(scaledData, containerW, containerH, cyOffset);
 
   if (!renderedIds[containerId]) renderedIds[containerId] = new Set();
   const known = renderedIds[containerId];
@@ -181,12 +201,12 @@ function renderBubbles(bubbleData, containerId) {
     const existing = el.querySelector(`.bubble-anchor[data-id="${b.id}"]`);
 
     if (existing) {
-      // Smoothly reposition if layout changed (e.g. panel resize)
-      existing.style.left   = `${b.x}px`;
-      existing.style.top    = `${b.y}px`;
-      existing.style.width  = `${b.size}px`;
-      existing.style.height = `${b.size}px`;
-      // Update inner bubble gradient too
+      // Smoothly reposition if layout changed (e.g. panel resize or window resize)
+      existing.style.left              = `${b.x}px`;
+      existing.style.top               = `${b.y}px`;
+      existing.style.width             = `${b.size}px`;
+      existing.style.height            = `${b.size}px`;
+      existing.style.setProperty('--bubble-size', `${b.size}px`);
       const inner = existing.querySelector('.bubble');
       if (inner) inner.style.background = b.gradient;
     } else {
@@ -195,10 +215,11 @@ function renderBubbles(bubbleData, containerId) {
       anchor.className  = 'bubble-anchor';
       anchor.dataset.id = b.id;
       anchor.style.cssText = `
-        left:   ${b.x}px;
-        top:    ${b.y}px;
-        width:  ${b.size}px;
-        height: ${b.size}px;
+        left:          ${b.x}px;
+        top:           ${b.y}px;
+        width:         ${b.size}px;
+        height:        ${b.size}px;
+        --bubble-size: ${b.size}px;
       `;
 
       const inner = document.createElement('div');
@@ -221,6 +242,28 @@ function renderBubbles(bubbleData, containerId) {
       known.add(b.id);
     }
   });
+}
+
+// ── ResizeObserver — re-layout on container resize ────────────
+// Debounced so rapid resize events don't thrash the layout engine.
+function observeField(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el || typeof ResizeObserver === 'undefined') return;
+
+  let rafId = null;
+  const ro = new ResizeObserver(() => {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => {
+      const data = lastData[containerId];
+      if (data && data.length > 0) {
+        // Clear the known-ID set so all bubbles reposition (no pop-in on resize)
+        // We do this by temporarily suppressing the "new bubble" branch:
+        // keep IDs in renderedIds so they hit the "existing" branch.
+        renderBubbles(data, containerId);
+      }
+    });
+  });
+  ro.observe(el);
 }
 
 // ── Draggable panel resizer ───────────────────────────────────
@@ -299,6 +342,11 @@ export function initApp({ me, them, myKey }) {
   }
   document.getElementById('app').classList.remove('hidden');
   updateCaptionContrast(); // set immediately so there's no flash
+
+  // Watch all bubble containers for size changes and re-layout on resize
+  observeField('theirBubbleField');
+  observeField('theirBubbleFieldLeft');
+  observeField('myBubbleField');
 
   const myCol    = collection(db, 'thoughts', me,   'taps');
   const theirCol = collection(db, 'thoughts', them, 'taps');

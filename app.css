@@ -127,7 +127,9 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 .bubble-time span {
   font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  /* Scale with the bubble: 13% of diameter, clamped 9px–16px.
+     --bubble-size is set as an inline style on .bubble-anchor by JS. */
+  font-size: clamp(9px, calc(var(--bubble-size, 96px) * 0.13), 16px);
   font-weight: 400;
   letter-spacing: 0.05em;
   /* Gradient: solid white → 20% white — left to right */
