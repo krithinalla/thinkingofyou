@@ -191,14 +191,15 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 }
 
 /* ============================================================
-   Side panel overlay
+   Side panel overlay — sky gradient set dynamically by JS
    ============================================================ */
 .side-panel-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.35);
+  /* fallback; JS sets the actual sky gradient */
+  background: linear-gradient(180deg, #6a6a6a 0%, #b8b8b8 100%);
   display: flex; align-items: center; justify-content: center;
   z-index: 200;
-  backdrop-filter: blur(2px);
+  transition: background 0.8s ease;
 }
 .side-panel-overlay.hidden { display: none; }
 
@@ -248,52 +249,43 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
     repeating-linear-gradient(to bottom, rgba(0,0,0,0.055) 0 1px, transparent 1px 22px);
 }
 
-/* Close button */
-.close-btn {
-  position: absolute; top: 14px; right: 14px;
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  border: 1px solid #b0b0b0;
-  background: #e8e8e8;
-  font-size: 16px; line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: #444;
-  z-index: 20;
-  transition: background 0.15s;
-}
-.close-btn:hover { background: #d8d8d8; }
-
-/* Right panel header */
+/* Right panel header — label left, close button right, vertically centred */
 .panel-right-header {
   position: absolute;
-  top: 50px; left: 28px; right: 28px;
-  display: flex; align-items: flex-start;
-  justify-content: space-between; gap: 12px;
+  top: 28px; left: 28px; right: 28px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .panel-right-label {
   font-family: 'EB Garamond', serif;
   font-size: clamp(18px, 1.8vw, 24px);
   line-height: 1.4; color: #111;
-  max-width: 220px;
+  /* no max-width so it wraps naturally */
 }
 
-.icon-btn {
-  width: 34px; height: 34px;
+/* Close button — now lives inside the header row */
+.close-btn {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
   border-radius: 50%;
   border: 1px solid #b0b0b0;
-  background: transparent;
+  background: #e8e8e8;
+  font-size: 15px; line-height: 1;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; flex-shrink: 0;
-  transition: background 0.15s, transform 0.12s;
+  cursor: pointer; color: #555;
+  transition: background 0.15s;
+  /* Align with the top of the text */
+  margin-top: 3px;
 }
-.icon-btn:hover  { background: rgba(0,0,0,0.07); }
-.icon-btn:active { transform: scale(0.93); }
+.close-btn:hover { background: #d8d8d8; }
 
-/* Right bubble area */
+/* Right bubble area — sits below the header (label + close btn) */
 .bubble-field--right {
   position: absolute;
-  top: 155px; left: 0; right: 0; bottom: 100px;
+  top: 120px; left: 0; right: 0; bottom: 100px;
 }
 
 /* Right footer */

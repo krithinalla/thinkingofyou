@@ -4,6 +4,39 @@ import {
   query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// ── Sky gradients by time of day ─────────────────────────────
+// These paint the overlay background when the side panel opens,
+// evoking the actual sky at that moment.
+function skyGradientNow() {
+  const h = new Date().getHours();
+
+  if (h >= 5 && h < 7) {
+    // Dawn — soft rose & peach horizon
+    return 'linear-gradient(180deg, #1a1040 0%, #7b3f6e 35%, #f4845f 65%, #ffd59e 100%)';
+  } else if (h >= 7 && h < 11) {
+    // Morning — pale blue with warm gold base
+    return 'linear-gradient(180deg, #aed6f8 0%, #d4eaff 45%, #ffe8b0 80%, #ffd580 100%)';
+  } else if (h >= 11 && h < 14) {
+    // Midday — bright cerulean
+    return 'linear-gradient(180deg, #3a8fd1 0%, #74b9f5 40%, #b8d9f8 75%, #e8f4ff 100%)';
+  } else if (h >= 14 && h < 17) {
+    // Afternoon — deeper blue, slight haze
+    return 'linear-gradient(180deg, #2563a8 0%, #5b9fd4 45%, #a8cff0 80%, #d6ecff 100%)';
+  } else if (h >= 17 && h < 19) {
+    // Golden hour — amber & coral
+    return 'linear-gradient(180deg, #1c3f7a 0%, #e8622a 35%, #f5a623 60%, #ffd97d 100%)';
+  } else if (h >= 19 && h < 21) {
+    // Sunset — deep magenta into orange
+    return 'linear-gradient(180deg, #0d1b4b 0%, #6b2fa0 30%, #e05c3a 60%, #f5c07a 100%)';
+  } else if (h >= 21 && h < 23) {
+    // Dusk — indigo fading to purple
+    return 'linear-gradient(180deg, #060d2e 0%, #1a1460 40%, #3d2080 70%, #7b4fa0 100%)';
+  } else {
+    // Night — deep navy to near-black
+    return 'linear-gradient(180deg, #020510 0%, #071030 40%, #0e1f5e 75%, #1a2f7a 100%)';
+  }
+}
+
 // ── Exact color palette from design swatches ──────────────────
 // Each period: [highlight (top-left), shadow (bottom-right)]
 //
@@ -183,13 +216,15 @@ export function initApp({ me, them, myKey }) {
 
   // ── UI wiring ─────────────────────────────────────────────
   document.getElementById('openPanelBtn').addEventListener('click', () => {
-    document.getElementById('sidePanelOverlay').classList.remove('hidden');
+    const overlay = document.getElementById('sidePanelOverlay');
+    // Set sky gradient for the current time of day
+    overlay.style.background = skyGradientNow();
+    overlay.classList.remove('hidden');
   });
   document.getElementById('closePanelBtn').addEventListener('click', () => {
     document.getElementById('sidePanelOverlay').classList.add('hidden');
   });
   document.getElementById('recordBtn').addEventListener('click', recordThought);
-  document.getElementById('addThoughtBtn').addEventListener('click', recordThought);
   document.getElementById('sidePanelOverlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('sidePanelOverlay')) {
       document.getElementById('sidePanelOverlay').classList.add('hidden');
