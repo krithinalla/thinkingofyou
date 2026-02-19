@@ -52,22 +52,31 @@ function timeLabel(ts) {
   return 'night';
 }
 
-// ── Tooltip singleton ─────────────────────────────────────────
-const tooltip = document.createElement('div');
-tooltip.className = 'bubble-tooltip';
-document.body.appendChild(tooltip);
+// ── In-bubble time label ──────────────────────────────────────
+// Each bubble gets a .bubble-time child. On mouseenter we add
+// .showing which triggers the CSS keyframe (fade in → hold → fade out).
+// We cancel any in-flight animation first so re-hovering restarts it.
+function attachTimeLabel(bubbleEl, timeStr) {
+  const overlay = document.createElement('div');
+  overlay.className = 'bubble-time';
+  const span = document.createElement('span');
+  span.textContent = timeStr;
+  overlay.appendChild(span);
+  bubbleEl.appendChild(overlay);
 
-function showTooltip(e, text) {
-  tooltip.textContent = text;
-  tooltip.classList.add('visible');
-  moveTooltip(e);
-}
-function moveTooltip(e) {
-  tooltip.style.left = (e.clientX + 14) + 'px';
-  tooltip.style.top  = (e.clientY - 28) + 'px';
-}
-function hideTooltip() {
-  tooltip.classList.remove('visible');
+  let fadeTimer = null;
+
+  bubbleEl.addEventListener('mouseenter', () => {
+    // Restart animation cleanly
+    overlay.classList.remove('showing');
+    // Force reflow so removing+adding the class triggers a fresh animation
+    void overlay.offsetWidth;
+    overlay.classList.add('showing');
+
+    // Auto-remove class after animation completes (2.2 s) so it's ready for next hover
+    clearTimeout(fadeTimer);
+    fadeTimer = setTimeout(() => overlay.classList.remove('showing'), 2200);
+  });
 }
 
 // ── Bubble sizing — varied for organic feel ───────────────────
@@ -112,16 +121,15 @@ function renderBubbles(bubbleData, containerId, containerW, containerH) {
       background: ${b.gradient};
     `;
 
-    const date = b.ts?.toDate ? b.ts.toDate() : new Date();
-    const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-    const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-    const label   = timeLabel(b.ts);
-    const tooltipText = `${timeStr} · ${dateStr} · ${label}`;
+    // Format: "5:03 PM" on first line — clean and minimal like the reference
+    const date    = b.ts?.toDate ? b.ts.toDate() : new Date();
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour:   'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
 
-    div.addEventListener('mouseenter', (e) => showTooltip(e, tooltipText));
-    div.addEventListener('mousemove',  (e) => moveTooltip(e));
-    div.addEventListener('mouseleave', hideTooltip);
-
+    attachTimeLabel(div, timeStr);
     el.appendChild(div);
   });
 }
