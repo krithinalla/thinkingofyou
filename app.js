@@ -24,20 +24,27 @@ function getPeriod(h) {
 }
 
 // ── Bubble gradient — exact swatches ─────────────────────────
+// isDark: true when the dominant bubble color is dark enough that
+// overlapping UI text needs to flip to white for contrast.
+const PERIOD_META = {
+  'early-morning': { gradient: 'radial-gradient(circle at 38% 30%, #FF7231, #8A3809 85%)',  isDark: true  },
+  'morning':       { gradient: 'radial-gradient(circle at 38% 30%, #FFEF96, #D39D0B 85%)',  isDark: false },
+  'midday':        { gradient: 'radial-gradient(circle at 38% 30%, #528EFF, #FFDC7D 85%)',  isDark: true  },
+  'afternoon':     { gradient: 'radial-gradient(circle at 38% 30%, #96E3FF, #313F85 85%)',  isDark: true  },
+  'evening':       { gradient: 'radial-gradient(circle at 38% 30%, #1075FA, #1D115D 85%)',  isDark: true  },
+  'dusk':          { gradient: 'radial-gradient(circle at 38% 30%, #3807B4, #FFF1AA 85%)',  isDark: true  },
+  'night':         { gradient: 'radial-gradient(circle at 38% 30%, #FFA071, #FFF788 85%)',  isDark: false },
+};
+
 function bubbleGradientFromTimestamp(ts) {
   const date = ts?.toDate ? ts.toDate() : new Date();
   const period = getPeriod(date.getHours());
+  return PERIOD_META[period].gradient;
+}
 
-  const gradients = {
-    'early-morning': 'radial-gradient(circle at 38% 30%, #FF7231, #8A3809 85%)',   // burnt orange
-    'morning':       'radial-gradient(circle at 38% 30%, #FFEF96, #D39D0B 85%)',   // golden yellow
-    'midday':        'radial-gradient(circle at 38% 30%, #528EFF, #FFDC7D 85%)',   // sky blue → gold
-    'afternoon':     'radial-gradient(circle at 38% 30%, #96E3FF, #313F85 85%)',   // periwinkle
-    'evening':       'radial-gradient(circle at 38% 30%, #1075FA, #1D115D 85%)',   // deep royal blue
-    'dusk':          'radial-gradient(circle at 38% 30%, #3807B4, #FFF1AA 85%)',   // purple → cream
-    'night':         'radial-gradient(circle at 38% 30%, #FFA071, #FFF788 85%)',   // peach → yellow
-  };
-  return gradients[period];
+// Returns true if the current period's bubbles are predominantly dark
+function bubbleIsDarkNow() {
+  return PERIOD_META[getPeriod(new Date().getHours())].isDark;
 }
 
 // ── Sky overlay gradient — pastel/light version of the sky ────
@@ -141,9 +148,14 @@ function layoutBubbles(bubbles, containerW, containerH) {
 // Separating position from animation avoids transform conflicts.
 const renderedIds = {}; // { containerId → Set<id> }
 
-function renderBubbles(bubbleData, containerId, containerW, containerH) {
+function renderBubbles(bubbleData, containerId) {
   const el = document.getElementById(containerId);
   if (!el) return;
+
+  // Always measure the live element so the cluster is truly centered
+  const rect = el.getBoundingClientRect();
+  const containerW = rect.width  || el.offsetWidth  || 900;
+  const containerH = rect.height || el.offsetHeight || 680;
 
   const laid = layoutBubbles(bubbleData, containerW, containerH);
 
@@ -241,6 +253,36 @@ function initResizer() {
   document.addEventListener('mouseleave', stopDrag);
 }
 
+// ── Caption contrast — flip text white/dark based on bubble color ──
+// Called once on load and again whenever the bubble snapshot updates.
+function updateCaptionContrast() {
+  const isDark = bubbleIsDarkNow();
+  // All caption-text elements on screen 1 (not inside the overlay)
+  const screen1 = document.getElementById('screen1');
+  if (!screen1) return;
+  screen1.querySelectorAll('.caption-text').forEach(el => {
+    el.style.color = isDark ? '#ffffff' : '#111111';
+    el.style.textShadow = isDark
+      ? '0 1px 6px rgba(0,0,0,0.35)'
+      : 'none';
+  });
+  // Also flip the dots
+  screen1.querySelectorAll('.dot').forEach(el => {
+    el.style.background = isDark ? 'rgba(255,255,255,0.5)' : '#aaa';
+  });
+  // And the pill button border/text (subtle tint)
+  const btn = screen1.querySelector('.pill-btn');
+  if (btn) {
+    btn.style.color      = isDark ? '#ffffff' : '#111111';
+    btn.style.background = isDark ? 'rgba(255,255,255,0.18)' : '#ebebeb';
+    btn.style.borderColor= isDark ? 'rgba(255,255,255,0.35)' : '#bbb';
+    // SVG lines inside the button
+    btn.querySelectorAll('line').forEach(l => {
+      l.setAttribute('stroke', isDark ? '#fff' : '#888');
+    });
+  }
+}
+
 // ── Main init — called by each page with its identity ────────
 export function initApp({ me, them, myKey }) {
   // Auth guard
@@ -250,6 +292,7 @@ export function initApp({ me, them, myKey }) {
     return;
   }
   document.getElementById('app').classList.remove('hidden');
+  updateCaptionContrast(); // set immediately so there's no flash
 
   const myCol    = collection(db, 'thoughts', me,   'taps');
   const theirCol = collection(db, 'thoughts', them, 'taps');
@@ -261,8 +304,10 @@ export function initApp({ me, them, myKey }) {
       size: sizeForIndex(i),
       gradient: bubbleGradientFromTimestamp(d.data().ts),
     }));
-    renderBubbles(bubbles, 'theirBubbleField',     900, 680);
-    renderBubbles(bubbles, 'theirBubbleFieldLeft', 580, 680);
+    renderBubbles(bubbles, 'theirBubbleField');
+    renderBubbles(bubbles, 'theirBubbleFieldLeft');
+    // Update caption contrast whenever their bubbles reload
+    updateCaptionContrast();
   });
 
   onSnapshot(query(myCol, orderBy('ts', 'asc')), (snap) => {
@@ -271,7 +316,7 @@ export function initApp({ me, them, myKey }) {
       size: sizeForIndex(i),
       gradient: bubbleGradientFromTimestamp(d.data().ts),
     }));
-    renderBubbles(bubbles, 'myBubbleField', 540, 560);
+    renderBubbles(bubbles, 'myBubbleField');
   });
 
   // ── Record a thought ──────────────────────────────────────
