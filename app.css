@@ -129,14 +129,14 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 /* Trigger: JS adds .showing class on hover */
 .bubble-time.showing {
-  animation: timeFadeInOut 2.2s ease forwards;
+  animation: timeFadeInOut 1.4s ease forwards;
 }
 
 @keyframes timeFadeInOut {
-  0%   { opacity: 0;    }
-  12%  { opacity: 1;    }
-  65%  { opacity: 1;    }
-  100% { opacity: 0;    }
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  55%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 /* ============================================================
@@ -192,14 +192,21 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 /* ============================================================
    Side panel overlay — sky gradient set dynamically by JS
+   Using visibility+opacity instead of display:none so the
+   gradient is already set before it becomes visible.
    ============================================================ */
 .side-panel-overlay {
   position: fixed; inset: 0;
-  /* fallback; JS sets the actual sky gradient */
-  background: linear-gradient(180deg, #6a6a6a 0%, #b8b8b8 100%);
   display: flex; align-items: center; justify-content: center;
   z-index: 200;
-  transition: background 0.8s ease;
+  /* Start hidden via opacity/visibility so gradient can be set first */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease;
+}
+.side-panel-overlay.visible {
+  opacity: 1;
+  visibility: visible;
 }
 .side-panel-overlay.hidden { display: none; }
 

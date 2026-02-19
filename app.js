@@ -84,7 +84,7 @@ function attachTimeLabel(bubbleEl, timeStr) {
 
     // Auto-remove class after animation completes (2.2 s) so it's ready for next hover
     clearTimeout(fadeTimer);
-    fadeTimer = setTimeout(() => overlay.classList.remove('showing'), 2200);
+    fadeTimer = setTimeout(() => overlay.classList.remove('showing'), 1400);
   });
 }
 
@@ -193,17 +193,25 @@ export function initApp({ me, them, myKey }) {
   // ── UI wiring ─────────────────────────────────────────────
   document.getElementById('openPanelBtn').addEventListener('click', () => {
     const overlay = document.getElementById('sidePanelOverlay');
-    // Set sky gradient for the current time of day
+    // Set gradient BEFORE removing hidden, so it's already painted when it fades in
     overlay.style.background = skyGradientNow();
     overlay.classList.remove('hidden');
+    // Small rAF delay ensures the browser paints the gradient before transitioning opacity
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => overlay.classList.add('visible'));
+    });
   });
   document.getElementById('closePanelBtn').addEventListener('click', () => {
-    document.getElementById('sidePanelOverlay').classList.add('hidden');
+    const overlay = document.getElementById('sidePanelOverlay');
+    overlay.classList.remove('visible');
+    setTimeout(() => overlay.classList.add('hidden'), 500);
   });
   document.getElementById('recordBtn').addEventListener('click', recordThought);
   document.getElementById('sidePanelOverlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('sidePanelOverlay')) {
-      document.getElementById('sidePanelOverlay').classList.add('hidden');
+      const overlay = document.getElementById('sidePanelOverlay');
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.classList.add('hidden'), 500);
     }
   });
 }
