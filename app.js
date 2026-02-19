@@ -5,13 +5,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ── Time period lookup (matches swatch chart exactly) ────────
-//   3am–5am   → burnt orange      #FF7231 → #8A3809
-//   8am–10am  → golden yellow     #FFEF96 → #D39D0B
-//   11am–1pm  → sky blue + gold   #528EFF → #FFDC7D
-//   2pm–5pm   → periwinkle blue   #96E3FF → #313F85
-//   6pm–7pm   → deep royal blue   #1075FA → #1D115D
-//   8pm–10pm  → purple + cream    #3807B4 → #FFF1AA
-//   11pm–2am  → peach + yellow    #FFA071 → #FFF788
+//   3am–8am   → burnt orange      #FF7231 → #8A3809
+//   8am–11am  → golden yellow     #FFEF96 → #D39D0B
+//   11am–2pm  → sky blue + gold   #528EFF → #FFDC7D
+//   2pm–6pm   → periwinkle blue   #96E3FF → #313F85
+//   6pm–8pm   → deep royal blue   #1075FA → #1D115D
+//   8pm–11pm  → purple + cream    #3807B4 → #FFF1AA
+//   11pm–3am  → peach + yellow    #FFA071 → #FFF788
 
 function getPeriod(h) {
   if (h >= 3  && h < 8)  return 'early-morning'; // 3am–8am
@@ -40,31 +40,26 @@ function bubbleGradientFromTimestamp(ts) {
   return gradients[period];
 }
 
-// ── Sky overlay gradient — evokes the actual sky at that time ─
+// ── Sky overlay gradient — pastel/light version of the sky ────
+// Deliberately lighter & softer so the UI stays usable
 function skyGradientNow() {
   const period = getPeriod(new Date().getHours());
 
   const skies = {
-    'early-morning': 'linear-gradient(180deg, #0a0510 0%, #2a0e1a 30%, #8a3020 55%, #c86030 75%, #e8a060 100%)',
-    'morning':       'linear-gradient(180deg, #c8e8f8 0%, #e8f4ff 35%, #fff0c0 65%, #ffe080 100%)',
-    'midday':        'linear-gradient(180deg, #1a6abf 0%, #3a8fd1 30%, #74b9f5 60%, #c8e4ff 100%)',
-    'afternoon':     'linear-gradient(180deg, #1a4a90 0%, #3070b8 35%, #80b8e8 65%, #c0dcf8 100%)',
-    'evening':       'linear-gradient(180deg, #080f38 0%, #1030a0 30%, #2850d0 55%, #6090e8 80%, #90b8f8 100%)',
-    'dusk':          'linear-gradient(180deg, #04060f 0%, #0d0830 30%, #280850 55%, #580878 75%, #9840a8 100%)',
-    'night':         'linear-gradient(180deg, #010208 0%, #04082a 35%, #180830 60%, #401840 80%, #a04828 100%)',
+    'early-morning': 'linear-gradient(180deg, #f5ddd0 0%, #f9e8d8 40%, #fce9d4 70%, #fdf0e0 100%)',
+    'morning':       'linear-gradient(180deg, #e8f4ff 0%, #f4f8ff 35%, #fffbe8 65%, #fff8d0 100%)',
+    'midday':        'linear-gradient(180deg, #d0e8ff 0%, #daeffe 35%, #eaf5ff 65%, #f5faff 100%)',
+    'afternoon':     'linear-gradient(180deg, #d8e8f8 0%, #e0eef8 35%, #eef5fc 65%, #f4f8fe 100%)',
+    'evening':       'linear-gradient(180deg, #d0d8f0 0%, #dae0f5 30%, #e8eeff 55%, #f0f4ff 80%, #f8f8ff 100%)',
+    'dusk':          'linear-gradient(180deg, #e8d8f0 0%, #f0dff5 30%, #f5e8fa 55%, #faeeff 75%, #fdf5ff 100%)',
+    'night':         'linear-gradient(180deg, #f0ddd8 0%, #f5e4e0 35%, #faeee8 60%, #fdf3ef 80%, #fff8f5 100%)',
   };
   return skies[period];
-}
-
-function timeLabel(ts) {
-  const date = ts?.toDate ? ts.toDate() : new Date();
-  return getPeriod(date.getHours()).replace('-', ' ');
 }
 
 // ── In-bubble time label ──────────────────────────────────────
 // Each bubble gets a .bubble-time child. On mouseenter we add
 // .showing which triggers the CSS keyframe (fade in → hold → fade out).
-// We cancel any in-flight animation first so re-hovering restarts it.
 function attachTimeLabel(bubbleEl, timeStr) {
   const overlay = document.createElement('div');
   overlay.className = 'bubble-time';
@@ -76,13 +71,9 @@ function attachTimeLabel(bubbleEl, timeStr) {
   let fadeTimer = null;
 
   bubbleEl.addEventListener('mouseenter', () => {
-    // Restart animation cleanly
     overlay.classList.remove('showing');
-    // Force reflow so removing+adding the class triggers a fresh animation
-    void overlay.offsetWidth;
+    void overlay.offsetWidth; // force reflow
     overlay.classList.add('showing');
-
-    // Auto-remove class after animation completes (2.2 s) so it's ready for next hover
     clearTimeout(fadeTimer);
     fadeTimer = setTimeout(() => overlay.classList.remove('showing'), 1400);
   });
@@ -92,66 +83,62 @@ function attachTimeLabel(bubbleEl, timeStr) {
 const SIZES = [92, 112, 76, 130, 88, 106, 118, 80, 100, 96, 122, 84];
 function sizeForIndex(i) { return SIZES[i % SIZES.length]; }
 
-// ── Non-overlapping layout ────────────────────────────────────
-// Places bubbles one at a time using a phyllotaxis spiral, but
-// checks each candidate position against already-placed bubbles
-// and nudges outward until there's no overlap.
+// ── Non-overlapping circle packing ───────────────────────────
+// For each bubble, scan outward in concentric rings, sampling
+// many angles per ring until a gap-free position is found.
+// This guarantees no overlaps regardless of bubble count/size.
 function layoutBubbles(bubbles, containerW, containerH) {
   if (!bubbles.length) return [];
 
   const cx = containerW / 2;
-  const cy = containerH / 2 - 20;
-  const GOLDEN_ANGLE = 2.39996;
-  const placed = [];
+  const cy = containerH / 2 - 10;
+  const placed = []; // { cx, cy, r }
 
-  bubbles.forEach((b, i) => {
+  return bubbles.map((b) => {
     const r = b.size / 2;
 
-    if (i === 0) {
-      placed.push({ ...b, x: cx - r, y: cy - r, cx, cy });
-      return;
+    if (placed.length === 0) {
+      placed.push({ cx, cy, r });
+      return { ...b, x: cx - r, y: cy - r, cx, cy };
     }
 
-    // Try progressively larger spiral radii until no overlap
-    let found = false;
-    for (let step = 1; step <= 300 && !found; step++) {
-      const radius = Math.sqrt(i) * b.size * 0.62 + (step - 1) * 4;
-      const angle  = i * GOLDEN_ANGLE + (step - 1) * 0.15;
-      const px = cx + Math.cos(angle) * radius;
-      const py = cy + Math.sin(angle) * radius;
+    // Scan rings starting from a radius that could touch the nearest bubble.
+    // Step outward by 2px per ring; sample 360 angles per ring.
+    const minStartRadius = r + 6; // at least gap from center
+    let found = null;
 
-      // Check against all already-placed bubbles
-      const overlaps = placed.some(p => {
-        const dx = px - p.cx;
-        const dy = py - p.cy;
-        const minDist = r + p.size / 2 + 4; // 4px gap
-        return Math.sqrt(dx * dx + dy * dy) < minDist;
-      });
+    for (let ring = minStartRadius; ring <= 800 && !found; ring += 2) {
+      const angleSteps = Math.max(36, Math.ceil(2 * Math.PI * ring / 4)); // ~4px arc steps
+      for (let a = 0; a < angleSteps && !found; a++) {
+        const angle = (a / angleSteps) * 2 * Math.PI;
+        const px = cx + Math.cos(angle) * ring;
+        const py = cy + Math.sin(angle) * ring;
 
-      if (!overlaps) {
-        placed.push({ ...b, x: px - r, y: py - r, cx: px, cy: py });
-        found = true;
+        const overlaps = placed.some(p => {
+          const dx = px - p.cx;
+          const dy = py - p.cy;
+          return Math.sqrt(dx * dx + dy * dy) < r + p.r + 6; // 6px gap
+        });
+
+        if (!overlaps) {
+          found = { px, py };
+        }
       }
     }
 
-    // Fallback: just place it (shouldn't happen with 300 steps)
-    if (!found) {
-      const radius = Math.sqrt(i) * b.size * 0.8;
-      const angle  = i * GOLDEN_ANGLE;
-      const px = cx + Math.cos(angle) * radius;
-      const py = cy + Math.sin(angle) * radius;
-      placed.push({ ...b, x: px - r, y: py - r, cx: px, cy: py });
-    }
+    const px = found ? found.px : cx + (placed.length * 10);
+    const py = found ? found.py : cy + (placed.length * 10);
+    placed.push({ cx: px, cy: py, r });
+    return { ...b, x: px - r, y: py - r, cx: px, cy: py };
   });
-
-  return placed;
 }
 
 // ── Incremental bubble renderer ───────────────────────────────
 // Tracks which bubble IDs are already in the DOM. On each
 // Firestore update it only adds NEW bubbles (with pop-in
 // animation) and moves existing ones smoothly if layout shifts.
-// This prevents the "full refresh jump" on every new tap.
+// Structure: .bubble-anchor (positioned) > .bubble (visual + float anim)
+// Separating position from animation avoids transform conflicts.
 const renderedIds = {}; // { containerId → Set<id> }
 
 function renderBubbles(bubbleData, containerId, containerW, containerH) {
@@ -165,7 +152,7 @@ function renderBubbles(bubbleData, containerId, containerW, containerH) {
 
   // Remove any bubbles that are no longer in the data
   const currentIds = new Set(bubbleData.map(b => b.id));
-  el.querySelectorAll('.bubble[data-id]').forEach(node => {
+  el.querySelectorAll('.bubble-anchor[data-id]').forEach(node => {
     if (!currentIds.has(node.dataset.id)) {
       node.remove();
       known.delete(node.dataset.id);
@@ -173,27 +160,34 @@ function renderBubbles(bubbleData, containerId, containerW, containerH) {
   });
 
   laid.forEach((b) => {
-    const existing = el.querySelector(`.bubble[data-id="${b.id}"]`);
+    const existing = el.querySelector(`.bubble-anchor[data-id="${b.id}"]`);
 
     if (existing) {
       // Smoothly reposition if layout changed (e.g. panel resize)
-      existing.style.left       = `${b.x}px`;
-      existing.style.top        = `${b.y}px`;
-      existing.style.width      = `${b.size}px`;
-      existing.style.height     = `${b.size}px`;
-      existing.style.background = b.gradient;
+      existing.style.left   = `${b.x}px`;
+      existing.style.top    = `${b.y}px`;
+      existing.style.width  = `${b.size}px`;
+      existing.style.height = `${b.size}px`;
+      // Update inner bubble gradient too
+      const inner = existing.querySelector('.bubble');
+      if (inner) inner.style.background = b.gradient;
     } else {
-      // Brand-new bubble — create and pop in
-      const div = document.createElement('div');
-      div.className    = 'bubble';
-      div.dataset.id   = b.id;
-      // Vary float delay per bubble index so they drift independently
-      const floatDelay = (0.45 + (b.index % 7) * 0.6).toFixed(2);
-      div.style.cssText = `
-        left:          ${b.x}px;
-        top:           ${b.y}px;
-        width:         ${b.size}px;
-        height:        ${b.size}px;
+      // Brand-new bubble — outer anchor handles position, inner bubble animates
+      const anchor = document.createElement('div');
+      anchor.className  = 'bubble-anchor';
+      anchor.dataset.id = b.id;
+      anchor.style.cssText = `
+        left:   ${b.x}px;
+        top:    ${b.y}px;
+        width:  ${b.size}px;
+        height: ${b.size}px;
+      `;
+
+      const inner = document.createElement('div');
+      inner.className = 'bubble';
+      // Vary float delay per index so bubbles drift independently
+      const floatDelay = ((b.index % 7) * 0.65).toFixed(2);
+      inner.style.cssText = `
         background:    ${b.gradient};
         --float-delay: ${floatDelay}s;
       `;
@@ -202,9 +196,10 @@ function renderBubbles(bubbleData, containerId, containerW, containerH) {
       const timeStr = date.toLocaleTimeString('en-US', {
         hour: 'numeric', minute: '2-digit', hour12: true,
       });
-      attachTimeLabel(div, timeStr);
+      attachTimeLabel(inner, timeStr);
 
-      el.appendChild(div);
+      anchor.appendChild(inner);
+      el.appendChild(anchor);
       known.add(b.id);
     }
   });
@@ -219,14 +214,10 @@ function initResizer() {
   const panelLeft = screen2.querySelector('.panel-left');
   if (!panelLeft) return;
 
-  let dragging   = false;
-  let startX     = 0;
-  let startWidth = 0;
+  let dragging = false;
 
   divider.addEventListener('mousedown', (e) => {
-    dragging  = true;
-    startX    = e.clientX;
-    startWidth = screen2.getBoundingClientRect().width;
+    dragging = true;
     divider.classList.add('dragging');
     e.preventDefault();
   });

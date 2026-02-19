@@ -55,30 +55,36 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 .bubble-field {
   position: absolute;
   inset: 0;
-  pointer-events: none; /* field itself doesn't intercept — bubbles do */
-}
-
-/* Bubbles inside fields are individually interactive */
-.bubble-field .bubble {
-  pointer-events: all;
+  pointer-events: none; /* field itself doesn't intercept — anchors do */
 }
 
 /* ============================================================
-   Individual bubble
+   Bubble anchor — handles absolute position only.
+   Keeps layout coordinates stable so the inner .bubble can
+   animate freely without affecting the packing geometry.
+   ============================================================ */
+.bubble-anchor {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Individual bubble — visual circle that floats & pops in.
+   Fills its anchor entirely (inset: 0 + absolute).
    ============================================================ */
 .bubble {
   position: absolute;
+  inset: 0;
   border-radius: 50%;
-  /* Grain applied via a pseudo-element so the base circle stays transparent */
-  /* popIn fires immediately; float starts after popIn finishes (0.45 s delay) */
+  /* popIn plays once on entry; float loops forever after a delay */
   animation:
     popIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both,
-    float  4.5s ease-in-out var(--float-delay, 0.45s) infinite;
+    float 5s   ease-in-out var(--float-delay, 0s) infinite;
   cursor: pointer;
   pointer-events: all;
 }
 
-/* Grain texture overlay — sits on top, punches through with the circle shape */
+/* Grain texture overlay */
 .bubble::after {
   content: '';
   position: absolute;
@@ -96,16 +102,16 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 }
 
 @keyframes float {
-  0%   { transform: translateY(0px)    translateX(0px); }
-  25%  { transform: translateY(-5px)   translateX(2px); }
-  50%  { transform: translateY(-9px)   translateX(0px); }
-  75%  { transform: translateY(-4px)   translateX(-2px); }
-  100% { transform: translateY(0px)    translateX(0px); }
+  0%   { transform: translateY(0px)  translateX(0px); }
+  25%  { transform: translateY(-6px) translateX(2px); }
+  50%  { transform: translateY(-10px) translateX(0px); }
+  75%  { transform: translateY(-5px) translateX(-2px); }
+  100% { transform: translateY(0px)  translateX(0px); }
 }
 
 /* ============================================================
    In-bubble time label — renders centered inside the circle,
-   appears on hover, fades out after 2 s
+   appears on hover, fades out after ~1.4 s
    ============================================================ */
 .bubble-time {
   position: absolute;
@@ -116,7 +122,6 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
   justify-content: center;
   pointer-events: none;
   opacity: 0;
-  /* Gradient text colour that complements the bubble */
   --text-gradient: linear-gradient(160deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.45) 100%);
 }
 
@@ -125,14 +130,12 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
   font-size: clamp(10px, 3.5cqi, 15px);
   font-weight: 400;
   letter-spacing: 0.04em;
-  /* Gradient fill on the text */
   background: var(--text-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-align: center;
   line-height: 1.3;
-  /* Soft text-shadow for legibility on light bubbles */
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.18));
   white-space: nowrap;
   user-select: none;
@@ -202,15 +205,14 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 }
 
 /* ============================================================
-   Side panel overlay — sky gradient set dynamically by JS
+   Side panel overlay — pastel sky gradient set dynamically by JS.
    Using visibility+opacity instead of display:none so the
-   gradient is already set before it becomes visible.
+   gradient is already painted when it fades in.
    ============================================================ */
 .side-panel-overlay {
   position: fixed; inset: 0;
   display: flex; align-items: center; justify-content: center;
   z-index: 200;
-  /* Start hidden via opacity/visibility so gradient can be set first */
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.5s ease;
@@ -264,7 +266,7 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 .panel-divider.dragging {
   background: rgba(0,0,0,0.08);
 }
-/* Double-headed arrow cursor */
+/* Vertical pill handle */
 .panel-divider::after {
   content: '';
   position: absolute;
@@ -295,7 +297,7 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
     repeating-linear-gradient(to bottom, rgba(0,0,0,0.055) 0 1px, transparent 1px 22px);
 }
 
-/* Right panel header — label left, close button right, vertically centred */
+/* Right panel header — label left, close button right */
 .panel-right-header {
   position: absolute;
   top: 28px; left: 28px; right: 28px;
@@ -309,10 +311,9 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
   font-family: 'EB Garamond', serif;
   font-size: clamp(18px, 1.8vw, 24px);
   line-height: 1.4; color: #111;
-  /* no max-width so it wraps naturally */
 }
 
-/* Close button — now lives inside the header row */
+/* Close button */
 .close-btn {
   flex-shrink: 0;
   width: 26px; height: 26px;
@@ -323,12 +324,11 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; color: #555;
   transition: background 0.15s;
-  /* Align with the top of the text */
   margin-top: 3px;
 }
 .close-btn:hover { background: #d8d8d8; }
 
-/* Right bubble area — sits below the header (label + close btn) */
+/* Right bubble area */
 .bubble-field--right {
   position: absolute;
   top: 120px; left: 0; right: 0; bottom: 100px;
