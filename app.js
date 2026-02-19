@@ -92,54 +92,121 @@ function attachTimeLabel(bubbleEl, timeStr) {
 const SIZES = [92, 112, 76, 130, 88, 106, 118, 80, 100, 96, 122, 84];
 function sizeForIndex(i) { return SIZES[i % SIZES.length]; }
 
-// ── Phyllotaxis (sunflower) layout — natural packing ─────────
+// ── Non-overlapping layout ────────────────────────────────────
+// Places bubbles one at a time using a phyllotaxis spiral, but
+// checks each candidate position against already-placed bubbles
+// and nudges outward until there's no overlap.
 function layoutBubbles(bubbles, containerW, containerH) {
   if (!bubbles.length) return [];
-  const cx = containerW / 2;
-  const cy = containerH / 2 - 30;
-  const GOLDEN_ANGLE = 2.39996; // radians ≈ 137.5°
 
-  return bubbles.map((b, i) => {
+  const cx = containerW / 2;
+  const cy = containerH / 2 - 20;
+  const GOLDEN_ANGLE = 2.39996;
+  const placed = [];
+
+  bubbles.forEach((b, i) => {
     const r = b.size / 2;
-    if (i === 0) return { ...b, x: cx - r, y: cy - r };
-    const radius = Math.sqrt(i) * b.size * 0.68;
-    const angle  = i * GOLDEN_ANGLE;
-    return {
-      ...b,
-      x: cx + Math.cos(angle) * radius - r,
-      y: cy + Math.sin(angle) * radius - r,
-    };
+
+    if (i === 0) {
+      placed.push({ ...b, x: cx - r, y: cy - r, cx, cy });
+      return;
+    }
+
+    // Try progressively larger spiral radii until no overlap
+    let found = false;
+    for (let step = 1; step <= 300 && !found; step++) {
+      const radius = Math.sqrt(i) * b.size * 0.62 + (step - 1) * 4;
+      const angle  = i * GOLDEN_ANGLE + (step - 1) * 0.15;
+      const px = cx + Math.cos(angle) * radius;
+      const py = cy + Math.sin(angle) * radius;
+
+      // Check against all already-placed bubbles
+      const overlaps = placed.some(p => {
+        const dx = px - p.cx;
+        const dy = py - p.cy;
+        const minDist = r + p.size / 2 + 4; // 4px gap
+        return Math.sqrt(dx * dx + dy * dy) < minDist;
+      });
+
+      if (!overlaps) {
+        placed.push({ ...b, x: px - r, y: py - r, cx: px, cy: py });
+        found = true;
+      }
+    }
+
+    // Fallback: just place it (shouldn't happen with 300 steps)
+    if (!found) {
+      const radius = Math.sqrt(i) * b.size * 0.8;
+      const angle  = i * GOLDEN_ANGLE;
+      const px = cx + Math.cos(angle) * radius;
+      const py = cy + Math.sin(angle) * radius;
+      placed.push({ ...b, x: px - r, y: py - r, cx: px, cy: py });
+    }
   });
+
+  return placed;
 }
 
-// ── Render bubbles ────────────────────────────────────────────
+// ── Incremental bubble renderer ───────────────────────────────
+// Tracks which bubble IDs are already in the DOM. On each
+// Firestore update it only adds NEW bubbles (with pop-in
+// animation) and moves existing ones smoothly if layout shifts.
+// This prevents the "full refresh jump" on every new tap.
+const renderedIds = {}; // { containerId → Set<id> }
+
 function renderBubbles(bubbleData, containerId, containerW, containerH) {
   const el = document.getElementById(containerId);
   if (!el) return;
-  el.innerHTML = '';
 
   const laid = layoutBubbles(bubbleData, containerW, containerH);
+
+  if (!renderedIds[containerId]) renderedIds[containerId] = new Set();
+  const known = renderedIds[containerId];
+
+  // Remove any bubbles that are no longer in the data
+  const currentIds = new Set(bubbleData.map(b => b.id));
+  el.querySelectorAll('.bubble[data-id]').forEach(node => {
+    if (!currentIds.has(node.dataset.id)) {
+      node.remove();
+      known.delete(node.dataset.id);
+    }
+  });
+
   laid.forEach((b) => {
-    const div = document.createElement('div');
-    div.className = 'bubble';
-    div.style.cssText = `
-      left:   ${b.x}px;
-      top:    ${b.y}px;
-      width:  ${b.size}px;
-      height: ${b.size}px;
-      background: ${b.gradient};
-    `;
+    const existing = el.querySelector(`.bubble[data-id="${b.id}"]`);
 
-    // Format: "5:03 PM" on first line — clean and minimal like the reference
-    const date    = b.ts?.toDate ? b.ts.toDate() : new Date();
-    const timeStr = date.toLocaleTimeString('en-US', {
-      hour:   'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    if (existing) {
+      // Smoothly reposition if layout changed (e.g. panel resize)
+      existing.style.left       = `${b.x}px`;
+      existing.style.top        = `${b.y}px`;
+      existing.style.width      = `${b.size}px`;
+      existing.style.height     = `${b.size}px`;
+      existing.style.background = b.gradient;
+    } else {
+      // Brand-new bubble — create and pop in
+      const div = document.createElement('div');
+      div.className    = 'bubble';
+      div.dataset.id   = b.id;
+      // Vary float delay per bubble index so they drift independently
+      const floatDelay = (0.45 + (b.index % 7) * 0.6).toFixed(2);
+      div.style.cssText = `
+        left:          ${b.x}px;
+        top:           ${b.y}px;
+        width:         ${b.size}px;
+        height:        ${b.size}px;
+        background:    ${b.gradient};
+        --float-delay: ${floatDelay}s;
+      `;
 
-    attachTimeLabel(div, timeStr);
-    el.appendChild(div);
+      const date    = b.ts?.toDate ? b.ts.toDate() : new Date();
+      const timeStr = date.toLocaleTimeString('en-US', {
+        hour: 'numeric', minute: '2-digit', hour12: true,
+      });
+      attachTimeLabel(div, timeStr);
+
+      el.appendChild(div);
+      known.add(b.id);
+    }
   });
 }
 
@@ -199,7 +266,7 @@ export function initApp({ me, them, myKey }) {
   // ── Live listeners ────────────────────────────────────────
   onSnapshot(query(theirCol, orderBy('ts', 'asc')), (snap) => {
     const bubbles = snap.docs.map((d, i) => ({
-      id: d.id, ts: d.data().ts,
+      id: d.id, ts: d.data().ts, index: i,
       size: sizeForIndex(i),
       gradient: bubbleGradientFromTimestamp(d.data().ts),
     }));
@@ -209,7 +276,7 @@ export function initApp({ me, them, myKey }) {
 
   onSnapshot(query(myCol, orderBy('ts', 'asc')), (snap) => {
     const bubbles = snap.docs.map((d, i) => ({
-      id: d.id, ts: d.data().ts,
+      id: d.id, ts: d.data().ts, index: i,
       size: sizeForIndex(i),
       gradient: bubbleGradientFromTimestamp(d.data().ts),
     }));
@@ -226,7 +293,7 @@ export function initApp({ me, them, myKey }) {
     } catch(e) { console.error(e); }
     setTimeout(() => {
       btn.disabled = false;
-      btn.innerHTML = `<svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M5.5 9S1 6.12 1 3.25a2.75 2.75 0 0 1 4.5-2.1A2.75 2.75 0 0 1 10 3.25C10 6.12 5.5 9 5.5 9Z" fill="#888"/></svg> Thinking of you right now`;
+      btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><line x1="5.5" y1="1" x2="5.5" y2="10" stroke="#888" stroke-width="1.5" stroke-linecap="round"/><line x1="1" y1="5.5" x2="10" y2="5.5" stroke="#888" stroke-width="1.5" stroke-linecap="round"/></svg> Thinking of you right now`;
     }, 2000);
   }
 
