@@ -19,13 +19,20 @@
   <!-- Main app (hidden until auth passes) -->
   <div class="app hidden" id="app">
 
-    <!-- SVG grain filter -->
+    <!-- SVG grain filter — transparent background, noise only -->
     <svg class="grain-filter" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <filter id="grain" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="4" stitchTiles="stitch" result="noise"/>
-          <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
-          <feComposite in="SourceGraphic" in2="grayNoise" operator="arithmetic" k1="0" k2="1" k3="0.18" k4="0"/>
+        <filter id="grain" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+          <!-- Generate grayscale noise -->
+          <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch" result="noise"/>
+          <feColorMatrix type="matrix"
+            values="0 0 0 0 0
+                    0 0 0 0 0
+                    0 0 0 0 0
+                    0 0 0 0.25 0"
+            in="noise" result="alphaGrain"/>
+          <!-- Darken the source graphic where grain is present -->
+          <feComposite in="SourceGraphic" in2="alphaGrain" operator="arithmetic" k1="1" k2="0.9" k3="0" k4="0"/>
         </filter>
       </defs>
     </svg>
@@ -92,170 +99,8 @@
   </div><!-- /app -->
 
   <script type="module">
-    import { db } from '../firebase-config.js';
-    import {
-      collection, addDoc, onSnapshot,
-      query, orderBy, serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-    // ── Auth guard ──────────────────────────────────────────────
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('key') !== 'bujj') {
-      document.getElementById('accessDenied').classList.remove('hidden');
-    } else {
-      document.getElementById('app').classList.remove('hidden');
-      initApp();
-    }
-
-    function initApp() {
-      const ME = 'krithi';
-      const THEM = 'shashwath';
-
-      // Collections
-      const myCol   = collection(db, 'thoughts', ME,   'taps');
-      const theirCol = collection(db, 'thoughts', THEM, 'taps');
-
-      // ── Bubble color from time of day ──────────────────────────
-      // Morning  6–12  → golden yellow
-      // Afternoon 12–18 → warm orange
-      // Evening  18–21 → deep orange-red
-      // Night    21–6  → deep blue
-      function bubbleStyleFromTimestamp(ts) {
-        const date = ts?.toDate ? ts.toDate() : new Date();
-        const h = date.getHours();
-        if (h >= 6 && h < 12) {
-          return {
-            gradient: 'radial-gradient(circle at 35% 32%, #f9e07a, #e8a020 80%)',
-            label: 'morning'
-          };
-        } else if (h >= 12 && h < 18) {
-          return {
-            gradient: 'radial-gradient(circle at 35% 32%, #f0a060, #d96020 80%)',
-            label: 'afternoon'
-          };
-        } else if (h >= 18 && h < 21) {
-          return {
-            gradient: 'radial-gradient(circle at 35% 32%, #e07040, #c03010 80%)',
-            label: 'evening'
-          };
-        } else {
-          return {
-            gradient: 'radial-gradient(circle at 35% 32%, #6aaade, #1a3fa0 80%)',
-            label: 'night'
-          };
-        }
-      }
-
-      // ── Bubble size varies slightly for organic feel ─────────
-      const SIZES = [80, 96, 110, 126, 140, 90, 104, 118];
-      function sizeForIndex(i) {
-        return SIZES[i % SIZES.length];
-      }
-
-      // ── Layout: pack bubbles in a loose circular cluster ──────
-      function layoutBubbles(bubbles, containerW, containerH) {
-        if (bubbles.length === 0) return [];
-        const placed = [];
-        const cx = containerW / 2;
-        const cy = containerH / 2 - 40;
-
-        bubbles.forEach((b, i) => {
-          const r = b.size / 2;
-          if (i === 0) {
-            placed.push({ x: cx - r, y: cy - r, ...b });
-            return;
-          }
-          // Spiral outward to find non-overlapping spot
-          const angle = i * 2.4; // golden angle approx
-          const spread = Math.sqrt(i) * (b.size * 0.72);
-          let px = cx + Math.cos(angle) * spread - r;
-          let py = cy + Math.sin(angle) * spread - r;
-          placed.push({ x: px, y: py, ...b });
-        });
-        return placed;
-      }
-
-      // ── Render bubbles into a container ───────────────────────
-      function renderBubbles(bubbleData, containerId, containerW, containerH) {
-        const el = document.getElementById(containerId);
-        if (!el) return;
-        el.innerHTML = '';
-        const laid = layoutBubbles(bubbleData, containerW, containerH);
-        laid.forEach((b) => {
-          const div = document.createElement('div');
-          div.className = 'bubble';
-          div.style.cssText = `
-            left: ${b.x}px;
-            top:  ${b.y}px;
-            width: ${b.size}px;
-            height: ${b.size}px;
-            background: ${b.gradient};
-          `;
-          // Tooltip with time
-          const date = b.ts?.toDate ? b.ts.toDate() : new Date();
-          div.title = date.toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' });
-          el.appendChild(div);
-        });
-      }
-
-      // ── State ─────────────────────────────────────────────────
-      let theirBubbles = [];
-      let myBubbles    = [];
-
-      // ── Listen: their bubbles (Shashwath) ─────────────────────
-      onSnapshot(query(theirCol, orderBy('ts', 'asc')), (snap) => {
-        theirBubbles = snap.docs.map((d, i) => ({
-          id: d.id,
-          ts: d.data().ts,
-          size: sizeForIndex(i),
-          ...bubbleStyleFromTimestamp(d.data().ts)
-        }));
-        renderBubbles(theirBubbles, 'theirBubbleField',    900, 700);
-        renderBubbles(theirBubbles, 'theirBubbleFieldLeft', 600, 700);
-      });
-
-      // ── Listen: my bubbles (Krithi) ────────────────────────────
-      onSnapshot(query(myCol, orderBy('ts', 'asc')), (snap) => {
-        myBubbles = snap.docs.map((d, i) => ({
-          id: d.id,
-          ts: d.data().ts,
-          size: sizeForIndex(i),
-          ...bubbleStyleFromTimestamp(d.data().ts)
-        }));
-        renderBubbles(myBubbles, 'myBubbleField', 560, 620);
-      });
-
-      // ── Record a thought ──────────────────────────────────────
-      async function recordThought() {
-        const btn = document.getElementById('recordBtn');
-        btn.disabled = true;
-        btn.textContent = '♥ Sending...';
-        try {
-          await addDoc(myCol, { ts: serverTimestamp() });
-        } catch(e) {
-          console.error(e);
-        }
-        setTimeout(() => {
-          btn.disabled = false;
-          btn.innerHTML = `<svg width="11" height="10" viewBox="0 0 11 10" fill="none"><path d="M5.5 9S1 6.12 1 3.25a2.75 2.75 0 0 1 4.5-2.1A2.75 2.75 0 0 1 10 3.25C10 6.12 5.5 9 5.5 9Z" fill="#888"/></svg> Thinking of you right now`;
-        }, 1500);
-      }
-
-      // ── UI interactions ───────────────────────────────────────
-      document.getElementById('openPanelBtn').addEventListener('click', () => {
-        document.getElementById('sidePanelOverlay').classList.remove('hidden');
-      });
-      document.getElementById('closePanelBtn').addEventListener('click', () => {
-        document.getElementById('sidePanelOverlay').classList.add('hidden');
-      });
-      document.getElementById('recordBtn').addEventListener('click', recordThought);
-      document.getElementById('addThoughtBtn').addEventListener('click', recordThought);
-      document.getElementById('sidePanelOverlay').addEventListener('click', (e) => {
-        if (e.target === document.getElementById('sidePanelOverlay')) {
-          document.getElementById('sidePanelOverlay').classList.add('hidden');
-        }
-      });
-    }
+    import { initApp } from '../app.js';
+    initApp({ me: 'krithi', them: 'shashwath', myKey: 'bujj' });
   </script>
 
 </body>

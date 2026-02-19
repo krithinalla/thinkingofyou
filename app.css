@@ -55,7 +55,12 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 .bubble-field {
   position: absolute;
   inset: 0;
-  pointer-events: none;
+  pointer-events: none; /* field itself doesn't intercept — bubbles do */
+}
+
+/* Bubbles inside fields are individually interactive */
+.bubble-field .bubble {
+  pointer-events: all;
 }
 
 /* ============================================================
@@ -64,15 +69,51 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 .bubble {
   position: absolute;
   border-radius: 50%;
-  filter: url(#grain);
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
-              opacity  0.35s ease;
+  /* Grain applied via a pseudo-element so the base circle stays transparent */
   animation: popIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+/* Grain texture overlay — sits on top, punches through with the circle shape */
+.bubble::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAAp4XiDAAAAUVBMVEWFhYWDg4N3d3dtbW17e3t1dXWBgYGHh4t5eXlzc3OLi4ubm5uVlZWPj4+NjY19fX2JiYl/f39ra2uRkZGZmZlpaWmXl5dvb29xcXGTk5NnZ2c8TV1mAAAAG3RSTlNAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAvEOwtAAAFVklEQVR4XpWWB67c2BUFb3g557T/hRo9/WUMZHlgr4Bg8Z4qQgQJlHI4A8SzFVrapvmTF9O7dmYRFZ60YiBhJRCgh1FYhiLAmdvX0CzTOpNE77ME0zk+0GiTGFNNFBREJBjqRQFaJPFiKjHELYEH8sznCUwwWi2GXCEGJAkHkFAEjQKDFAFBLFkBEROFkBRTLhPgMYgFMBBBAkMiLAAiBJGCFIkCEhIHCEJYCAiBYoQBBBiRGWFBQSDEBzSECkiWSDEoKQCMAkAAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEAREiRkIDkiIQCECIEQEEA");
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+  pointer-events: none;
 }
 
 @keyframes popIn {
   from { transform: scale(0); opacity: 0; }
   to   { transform: scale(1); opacity: 1; }
+}
+
+/* ============================================================
+   Hover tooltip — custom, styled (replaces native title)
+   ============================================================ */
+.bubble-tooltip {
+  position: fixed;
+  background: rgba(20, 20, 20, 0.82);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 5px 10px;
+  border-radius: 8px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.bubble-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* ============================================================
