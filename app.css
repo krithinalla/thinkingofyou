@@ -297,8 +297,8 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 .panel-left-caption {
   position: absolute;
-  bottom: 68px; left: 0; right: 0;
-  display: flex; justify-content: center;
+  bottom: 36px; left: 0; right: 0;
+  display: flex; justify-content: center; align-items: center;
   pointer-events: none;
 }
 
