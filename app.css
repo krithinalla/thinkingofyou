@@ -267,18 +267,15 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 /* ── Panel divider (draggable resizer) ───────────────────── */
 .panel-divider {
-  flex: 0 0 8px;
-  width: 8px;
-  background: transparent;
+  flex: 0 0 1px;
+  width: 1px;
+  background: rgba(0,0,0,0.12);
   cursor: default;
   position: relative;
   z-index: 10;
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
 }
 
-/* Small centred pill handle */
+/* Small pill handle — floats centred on the line, overlapping both panels */
 .divider-handle {
   position: absolute;
   top: 50%;
@@ -287,12 +284,16 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
   width: 4px;
   height: 32px;
   border-radius: 2px;
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(180, 180, 210, 0.7);
   cursor: col-resize;
   transition: background 0.15s;
+  /* expand click target without changing visual size */
+  padding: 0 6px;
+  margin: 0 -6px;
+  box-sizing: content-box;
 }
 .divider-handle:hover {
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(150, 150, 190, 0.9);
 }
 
 .panel-left-caption {
