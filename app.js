@@ -275,11 +275,13 @@ function initResizer() {
   const panelLeft = screen2.querySelector('.panel-left');
   if (!panelLeft) return;
 
+  const handle = divider.querySelector('.divider-handle');
+  if (!handle) return;
+
   let dragging = false;
 
-  divider.addEventListener('mousedown', (e) => {
+  handle.addEventListener('mousedown', (e) => {
     dragging = true;
-    divider.classList.add('dragging');
     e.preventDefault();
   });
 
@@ -295,7 +297,6 @@ function initResizer() {
   function stopDrag() {
     if (!dragging) return;
     dragging = false;
-    divider.classList.remove('dragging');
   }
 
   document.addEventListener('mouseup',    stopDrag);

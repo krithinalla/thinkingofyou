@@ -265,10 +265,30 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
   flex: 0 0 1px;
   width: 1px;
   background: rgba(0,0,0,0.15);
-  cursor: col-resize;
+  cursor: default;           /* no resize cursor on the bare line */
   position: relative;
   z-index: 10;
-  /* No size change on hover — just the cursor changes */
+}
+
+/* Pill handle — centred on the divider line, matches sky bg color */
+.divider-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 36px;
+  border-radius: 2px;
+  /* same tone as the pastel sky overlay — blends in naturally */
+  background: rgba(180, 180, 200, 0.55);
+  cursor: col-resize;
+  /* expand the click target without changing visual size */
+  padding: 0 8px;
+  margin: 0 -8px;
+  box-sizing: content-box;
+}
+.divider-handle:hover {
+  background: rgba(150, 150, 180, 0.75);
 }
 
 .panel-left-caption {
