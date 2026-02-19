@@ -91,8 +91,20 @@
   </div><!-- /app -->
 
   <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { initApp } from '../app.js';
-    initApp({ me: 'shashwath', them: 'krithi', myKey: 'kriath' });
+
+    const app = initializeApp({
+      apiKey:            "REDACTED_API_KEY",
+      authDomain:        "thinking-of-you-f07a8.firebaseapp.com",
+      projectId:         "thinking-of-you-f07a8",
+      storageBucket:     "thinking-of-you-f07a8.firebasestorage.app",
+      messagingSenderId: "179606549622",
+      appId:             "1:179606549622:web:01b97444fb10896e669b57",
+    });
+    const db = getFirestore(app);
+    initApp({ me: 'shashwath', them: 'krithi', myKey: 'kriath', db });
   </script>
 
 </body>

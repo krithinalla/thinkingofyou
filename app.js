@@ -1,4 +1,4 @@
-import { db } from './firebase-config.js';
+// db is passed in via initApp({ db }) — no separate firebase-config.js needed.
 import {
   collection, addDoc, onSnapshot,
   query, orderBy, serverTimestamp
@@ -333,7 +333,7 @@ function updateCaptionContrast() {
 }
 
 // ── Main init — called by each page with its identity ────────
-export function initApp({ me, them, myKey }) {
+export function initApp({ me, them, myKey, db }) {
   // Auth guard
   const params = new URLSearchParams(window.location.search);
   if (params.get('key') !== myKey) {

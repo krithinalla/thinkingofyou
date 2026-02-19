@@ -94,8 +94,23 @@
   </div><!-- /app -->
 
   <script type="module">
+    // Firebase config is inlined here — the key is restricted to
+    // https://krithinalla.github.io/* in Google Cloud Console,
+    // so it cannot be used from any other origin.
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { initApp } from '../app.js';
-    initApp({ me: 'krithi', them: 'shashwath', myKey: 'bujj' });
+
+    const app = initializeApp({
+      apiKey:            "REDACTED_API_KEY",
+      authDomain:        "thinking-of-you-f07a8.firebaseapp.com",
+      projectId:         "thinking-of-you-f07a8",
+      storageBucket:     "thinking-of-you-f07a8.firebasestorage.app",
+      messagingSenderId: "179606549622",
+      appId:             "1:179606549622:web:01b97444fb10896e669b57",
+    });
+    const db = getFirestore(app);
+    initApp({ me: 'krithi', them: 'shashwath', myKey: 'bujj', db });
   </script>
 
 </body>
