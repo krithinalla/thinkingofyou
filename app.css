@@ -176,13 +176,18 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
   line-height: 1.4;
   color: #111;
   text-align: center;
-  /* Auto-invert to white when bubbles overlap the text */
+}
+
+/* On screen 1 only — auto-invert to white when dark bubbles overlap */
+.screen-1 .caption-text {
   mix-blend-mode: difference;
-  filter: invert(0);
+}
+.screen-1 .dot {
+  mix-blend-mode: difference;
 }
 
 .dot-row { display: flex; gap: 10px; }
-.dot { width: 3px; height: 3px; border-radius: 50%; background: #aaa; mix-blend-mode: difference; }
+.dot { width: 3px; height: 3px; border-radius: 50%; background: #aaa; }
 
 /* ============================================================
    Pill button
@@ -262,33 +267,32 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 /* ── Panel divider (draggable resizer) ───────────────────── */
 .panel-divider {
-  flex: 0 0 1px;
-  width: 1px;
-  background: rgba(0,0,0,0.15);
-  cursor: default;           /* no resize cursor on the bare line */
+  flex: 0 0 8px;
+  width: 8px;
+  background: transparent;
+  cursor: default;
   position: relative;
   z-index: 10;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
 }
 
-/* Pill handle — centred on the divider line, matches sky bg color */
+/* Full-height pill handle — spans top to bottom, blends with bg */
 .divider-handle {
   position: absolute;
-  top: 50%;
+  top: 12px;
+  bottom: 12px;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   width: 4px;
-  height: 36px;
   border-radius: 2px;
-  /* same tone as the pastel sky overlay — blends in naturally */
-  background: rgba(180, 180, 200, 0.55);
+  background: rgba(0, 0, 0, 0.12);
   cursor: col-resize;
-  /* expand the click target without changing visual size */
-  padding: 0 8px;
-  margin: 0 -8px;
-  box-sizing: content-box;
+  transition: background 0.15s;
 }
 .divider-handle:hover {
-  background: rgba(150, 150, 180, 0.75);
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .panel-left-caption {
