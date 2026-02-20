@@ -285,15 +285,35 @@ function initResizer() {
     dragging = true;
     e.preventDefault();
   });
+  handle.addEventListener('touchstart', (e) => {
+    dragging = true;
+    e.preventDefault();
+  }, { passive: false });
 
-  document.addEventListener('mousemove', (e) => {
+  function onMove(clientX, clientY) {
     if (!dragging) return;
     const containerRect = screen2.getBoundingClientRect();
-    const mouseOffset   = e.clientX - containerRect.left;
-    let pct = (mouseOffset / containerRect.width) * 100;
-    pct = Math.min(75, Math.max(25, pct));
-    panelLeft.style.setProperty('--left-w', pct + '%');
-  });
+    const isMobile = window.innerWidth <= 600;
+    if (isMobile) {
+      // Vertical resize — adjust top panel height
+      const mouseOffset = clientY - containerRect.top;
+      let pct = (mouseOffset / containerRect.height) * 100;
+      pct = Math.min(75, Math.max(25, pct));
+      panelLeft.style.flexBasis = pct + 'dvh';
+      panelLeft.style.height    = pct + 'dvh';
+    } else {
+      // Horizontal resize
+      const mouseOffset = clientX - containerRect.left;
+      let pct = (mouseOffset / containerRect.width) * 100;
+      pct = Math.min(75, Math.max(25, pct));
+      panelLeft.style.setProperty('--left-w', pct + '%');
+    }
+  }
+
+  document.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+  document.addEventListener('touchmove',  (e) => {
+    if (dragging) { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); }
+  }, { passive: false });
 
   function stopDrag() {
     if (!dragging) return;
@@ -302,6 +322,7 @@ function initResizer() {
 
   document.addEventListener('mouseup',    stopDrag);
   document.addEventListener('mouseleave', stopDrag);
+  document.addEventListener('touchend',   stopDrag);
 }
 
 // ── Caption contrast — screen 1 always has a white background.

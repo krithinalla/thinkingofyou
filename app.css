@@ -363,6 +363,82 @@ svg.grain-filter { position: absolute; width: 0; height: 0; overflow: hidden; }
 .hidden { display: none !important; }
 
 /* ============================================================
+   Mobile — stack panels top/bottom instead of side by side
+   ============================================================ */
+@media (max-width: 600px) {
+
+  /* Full-screen card, scrollable vertically */
+  .screen-1,
+  .screen-2 {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* Stack the two panels vertically */
+  .screen-2 {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  /* Each panel takes half the screen height */
+  .panel {
+    width: 100% !important;
+    height: 50dvh;
+    flex: 0 0 50dvh !important;
+  }
+
+  .panel-left {
+    flex: 0 0 50dvh !important;
+  }
+
+  /* Divider becomes a horizontal line */
+  .panel-divider {
+    flex: 0 0 1px;
+    width: 100%;
+    height: 1px;
+    background: rgba(0,0,0,0.12);
+  }
+
+  /* Handle rotates to horizontal pill */
+  .divider-handle {
+    width: 32px;
+    height: 4px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    cursor: row-resize;
+  }
+
+  /* Caption sits above the bottom of the top panel */
+  .panel-left-caption {
+    bottom: 52px;
+  }
+
+  /* Right panel header padding */
+  .panel-right-header {
+    top: 16px; left: 16px; right: 16px;
+  }
+
+  /* Right bubble field */
+  .bubble-field--right {
+    top: 90px;
+    bottom: 80px;
+  }
+
+  /* Button */
+  .panel-right-footer {
+    bottom: 20px;
+  }
+
+  /* Caption block on screen 1 */
+  .caption-block {
+    bottom: 40px;
+  }
+}
+
+/* ============================================================
    Empty state hint (when no bubbles yet)
    ============================================================ */
 .bubble-field:empty::after {
